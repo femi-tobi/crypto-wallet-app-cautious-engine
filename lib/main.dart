@@ -12,9 +12,10 @@ void main() async {
 
   await Hive.initFlutter();
 
-  await _openBoxSafely('favorites');
-  await _openBoxSafely('settings');
-  await _openBoxSafely('dio_cache');
+  // SAFE OPEN + FORCE DELETE CORRUPTED BOXES
+  await _safeOpenBox('favorites');
+  await _safeOpenBox('settings');
+  await _safeOpenBox('dio_cache');
 
   runApp(
     MultiProvider(
@@ -27,11 +28,15 @@ void main() async {
   );
 }
 
-Future<void> _openBoxSafely(String name) async {
+Future<void> _safeOpenBox(String name) async {
   try {
     await Hive.openBox(name);
+  } on HiveError catch (e) {
+    print('Corrupted $name: $e → Deleting...');
+    await Hive.deleteBoxFromDisk(name);
+    await Hive.openBox(name);
   } catch (e) {
-    print('Corrupted box $name, deleting...');
+    print('Failed to open $name: $e → Forcing delete...');
     await Hive.deleteBoxFromDisk(name);
     await Hive.openBox(name);
   }

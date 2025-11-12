@@ -1,3 +1,4 @@
+// lib/data/repositories/coin_repository.dart
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
@@ -19,8 +20,8 @@ class CoinRepository extends ChangeNotifier {
 
   CoinRepository() {
     _setupCache();
+    _clearOldCache(); // Prevents typeId: 125
     _startAutoRefresh();
-    // fetchCoins() is now called from initState in CoinsListScreen
   }
 
   void _setupCache() {
@@ -34,6 +35,15 @@ class CoinRepository extends ChangeNotifier {
     );
 
     _dio.interceptors.add(DioCacheInterceptor(options: _baseOptions));
+  }
+
+  Future<void> _clearOldCache() async {
+    try {
+      await _cacheStore.clean();
+      debugPrint('Old cache cleared');
+    } catch (e) {
+      debugPrint('Failed to clear cache: $e');
+    }
   }
 
   void _startAutoRefresh() {
@@ -65,8 +75,11 @@ class CoinRepository extends ChangeNotifier {
 
       final List data = response.data;
       _coins = data.map((json) => Coin.fromJson(json)).toList();
-    } catch (e) {
+    } on DioException catch (e) {
       debugPrint('Network error: $e');
+      await _loadFromCache();
+    } catch (e) {
+      debugPrint('Unexpected error: $e');
       await _loadFromCache();
     } finally {
       _isLoading = false;
