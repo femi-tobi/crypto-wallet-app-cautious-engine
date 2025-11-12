@@ -1,17 +1,23 @@
-# crypto_wallet_app
+# Krypton Crypto Wallet
 
-A new Flutter project.
+**Live CoinGecko Data** | **7-Day Charts** | **Web + Mobile + Offline**
 
-## Getting Started
+## Features
+- Live prices (100+ coins)
+- 7-day price chart (`fl_chart`)
+- Search + Favorites (Hive)
+- Offline caching (`dio_cache_interceptor`)
+- Pull-to-refresh
+- Shimmer loading
+- Dark Web3 UI
 
-This project is a starting point for a Flutter application.
+## Tech
+- `provider` – State
+- `dio` + `hive` – Network + Cache
+- `path_provider` – Cross-platform paths
+- `fl_chart` – Charts
 
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-# crypto-wallet-app-cautious-engine
+## Setup
+```bash
+flutter pub get
+flutter run

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_cache_interceptor_hive_store/dio_cache_interceptor_hive_store.dart';
@@ -17,8 +16,14 @@ class CoinRepository with ChangeNotifier {
   late final CacheOptions _baseCacheOptions;
 
   CoinRepository() {
-    final cacheDir = Directory.systemTemp.createTempSync('coingecko_cache');
-    final cacheStore = HiveCacheStore(cacheDir.path);
+    _initCache();
+  }
+
+  Future<void> _initCache() async {
+    // Let Hive auto-pick storage
+    // Web: IndexedDB
+    // Mobile: App documents
+    final cacheStore = HiveCacheStore(null);
 
     _baseCacheOptions = CacheOptions(
       store: cacheStore,
@@ -40,7 +45,7 @@ class CoinRepository with ChangeNotifier {
 
     try {
       final requestOptions = _baseCacheOptions.copyWith(
-        policy: forceRefresh ? CachePolicy.noCache : CachePolicy.refresh, // FIXED
+        policy: forceRefresh ? CachePolicy.noCache : CachePolicy.refresh,
       ).toOptions();
 
       final response = await _dio.get(
