@@ -23,16 +23,16 @@ class CoinsListScreen extends StatefulWidget {
 
 class _CoinsListScreenState extends State<CoinsListScreen> {
   int _selectedIndex = 0;
-  bool _showBalance = true; // ← State variable
+  bool _showBalance = true;
 
+  // Initialize pages in initState (only once)
   late final List<Widget> _pages;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final repo = Provider.of<CoinRepository>(context);
+  void initState() {
+    super.initState();
     _pages = [
-      _buildWalletPage(repo),
+      const _WalletPage(), // We'll rebuild this with Provider inside
       const ExploreScreen(),
       const SwapScreen(),
       const SettingsScreen(),
@@ -42,12 +42,10 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages.isEmpty
-          ? const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
-          : IndexedStack(
-              index: _selectedIndex,
-              children: _pages,
-            ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),
@@ -64,8 +62,16 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
       ),
     );
   }
+}
 
-  Widget _buildWalletPage(CoinRepository repo) {
+// Separate Wallet Page with Provider access
+class _WalletPage extends StatelessWidget {
+  const _WalletPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = Provider.of<CoinRepository>(context);
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -101,22 +107,30 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
             ),
 
             // Total Assets + Eye Toggle
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Total Assets', style: TextStyle(color: Colors.white70)),
-                  IconButton(
-                    icon: Icon(_showBalance ? Icons.visibility : Icons.visibility_off),
-                    onPressed: () => setState(() => _showBalance = !_showBalance), // ← WORKS NOW
-                  ),
-                ],
-              ),
-            ),
-            Text(
-              _showBalance ? '\$23,000' : '••••••',
-              style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
+            Consumer<_CoinsListScreenState>(
+              builder: (context, state, _) {
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total Assets', style: TextStyle(color: Colors.white70)),
+                          IconButton(
+                            icon: Icon(state._showBalance ? Icons.visibility : Icons.visibility_off),
+                            onPressed: () => state.setState(() => state._showBalance = !state._showBalance),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      state._showBalance ? '\$23,000' : '••••••',
+                      style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                );
+              },
             ),
 
             // Action Buttons
