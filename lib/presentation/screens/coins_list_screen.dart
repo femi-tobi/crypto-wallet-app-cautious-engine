@@ -8,15 +8,64 @@ import '../../data/models/coin.dart';
 import '../../data/repositories/coin_repository.dart';
 import '../widgets/coin_list_item.dart';
 import 'coin_detail_screen.dart';
+import 'wallet_screen.dart';
+import 'explore_screen.dart';
+import 'swap_screen.dart';
+import 'settings_screen.dart';
+import 'notifications_screen.dart';
 
-class CoinsListScreen extends StatelessWidget {
+class CoinsListScreen extends StatefulWidget {
   const CoinsListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final repo = Provider.of<CoinRepository>(context);
-    final searchCtrl = TextEditingController();
+  State<CoinsListScreen> createState() => _CoinsListScreenState();
+}
 
+class _CoinsListScreenState extends State<CoinsListScreen> {
+  int _selectedIndex = 0;
+  bool _showBalance = true; // ← State variable
+
+  late final List<Widget> _pages;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final repo = Provider.of<CoinRepository>(context);
+    _pages = [
+      _buildWalletPage(repo),
+      const ExploreScreen(),
+      const SwapScreen(),
+      const SettingsScreen(),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages.isEmpty
+          ? const Center(child: CircularProgressIndicator(color: Colors.cyanAccent))
+          : IndexedStack(
+              index: _selectedIndex,
+              children: _pages,
+            ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) => setState(() => _selectedIndex = index),
+        backgroundColor: const Color(0xFF0D0D1C),
+        selectedItemColor: Colors.cyanAccent,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.wallet), label: 'Wallet'),
+          BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'Explore'),
+          BottomNavigationBarItem(icon: Icon(Icons.swap_horiz), label: 'Swap'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWalletPage(CoinRepository repo) {
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -36,24 +85,39 @@ class CoinsListScreen extends StatelessWidget {
                         ),
                   ),
                   const Spacer(),
-                  IconButton(icon: const Icon(Icons.search), onPressed: () => _showSearch(context)),
-                  IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () {}),
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    onPressed: () => _showSearch(context),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+                    ),
+                  ),
                 ],
               ),
             ),
 
-            // Total Assets
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
+            // Total Assets + Eye Toggle
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Total Assets', style: TextStyle(color: Colors.white70)),
-                  Icon(Icons.visibility),
+                  const Text('Total Assets', style: TextStyle(color: Colors.white70)),
+                  IconButton(
+                    icon: Icon(_showBalance ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => _showBalance = !_showBalance), // ← WORKS NOW
+                  ),
                 ],
               ),
             ),
-            const Text('\$23,000', style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold)),
+            Text(
+              _showBalance ? '\$23,000' : '••••••',
+              style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
+            ),
 
             // Action Buttons
             const SizedBox(height: 20),
@@ -81,7 +145,6 @@ class CoinsListScreen extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: _bottomNav(),
     );
   }
 
@@ -126,19 +189,9 @@ class CoinsListScreen extends StatelessWidget {
         itemCount: 8,
         itemBuilder: (_, __) => const ListTile(
           leading: CircleAvatar(backgroundColor: Colors.white),
-          title: SizedBox(height: 16, width: double.infinity),
-          subtitle: SizedBox(height: 12, width: 50),
-          trailing: SizedBox(
-            width: 80,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(height: 16),
-                SizedBox(height: 4),
-                SizedBox(height: 12),
-              ],
-            ),
-          ),
+          title: SizedBox(height: 16),
+          subtitle: SizedBox(height: 12),
+          trailing: SizedBox(width: 80),
         ),
       ),
     );
@@ -169,25 +222,32 @@ class _TabBarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 20),
       child: Row(
         children: [
-          _tab('Coins', true),
-          _tab('NFTs', false),
-          _tab('Activity', false),
-          const Spacer(),
+          _Tab('Coins', true),
+          _Tab('NFTs', false),
+          _Tab('Activity', false),
+          Spacer(),
           CircleAvatar(
             radius: 16,
-            backgroundColor: Colors.grey[800],
-            child: const Icon(Icons.add, size: 18),
+            backgroundColor: Colors.grey,
+            child: Icon(Icons.add, size: 18),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _tab(String text, bool active) {
+class _Tab extends StatelessWidget {
+  final String text;
+  final bool active;
+  const _Tab(this.text, this.active);
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: 30),
       child: Column(
@@ -204,21 +264,6 @@ class _TabBarRow extends StatelessWidget {
       ),
     );
   }
-}
-
-// Bottom Nav
-Widget _bottomNav() {
-  return BottomNavigationBar(
-    backgroundColor: const Color(0xFF0D0D1C),
-    selectedItemColor: Colors.cyanAccent,
-    unselectedItemColor: Colors.grey,
-    items: const [
-      BottomNavigationBarItem(icon: Icon(Icons.wallet), label: 'Wallet'),
-      BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'Explore'),
-      BottomNavigationBarItem(icon: Icon(Icons.swap_horiz), label: 'Swap'),
-      BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
-    ],
-  );
 }
 
 // Search Delegate
