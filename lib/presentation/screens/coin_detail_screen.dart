@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../data/models/coin.dart';
 import '../../data/repositories/coin_repository.dart';
@@ -17,14 +18,20 @@ class CoinDetailScreen extends StatelessWidget {
       body: FutureBuilder<List<FlSpot>>(
         future: repo.getPriceHistory(coin.id),
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Colors.cyanAccent));
+          }
+
           final spots = snapshot.data ?? [];
+          final hasData = spots.isNotEmpty;
+
           return CustomScrollView(
             slivers: [
-              const SliverAppBar(
+              SliverAppBar(
                 expandedHeight: 180,
                 flexibleSpace: FlexibleSpaceBar(
-                  title: Text('Coin Detail'),
-                  background: ColoredBox(color: Color(0xFF0D0D1C)),
+                  title: Text(coin.name),
+                  background: Container(color: const Color(0xFF0D0D1C)),
                 ),
               ),
               SliverToBoxAdapter(
@@ -32,15 +39,36 @@ class CoinDetailScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      Text('\$${coin.currentPrice.toStringAsFixed(2)}',
-                          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold)),
+                      // Coin Image
+                      Center(
+                        child: ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: coin.image,
+                            width: 80,
+                            height: 80,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => const CircularProgressIndicator(),
+                            errorWidget: (context, url, error) => const Icon(Icons.currency_bitcoin, size: 50, color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Price
+                      Text(
+                        '\$${coin.currentPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+                      ),
                       Text(
                         '${coin.priceChangePercentage24h > 0 ? '+' : ''}${coin.priceChangePercentage24h.toStringAsFixed(2)}%',
                         style: TextStyle(
-                            color: coin.priceChangePercentage24h > 0 ? Colors.green : Colors.red,
-                            fontSize: 18),
+                          color: coin.priceChangePercentage24h > 0 ? Colors.green : Colors.red,
+                          fontSize: 18,
+                        ),
                       ),
                       const SizedBox(height: 30),
+
+                      // Chart
                       Container(
                         height: 200,
                         padding: const EdgeInsets.all(16),
@@ -48,9 +76,8 @@ class CoinDetailScreen extends StatelessWidget {
                           color: Colors.white.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: spots.isEmpty
-                            ? const Center(child: CircularProgressIndicator())
-                            : LineChart(
+                        child: hasData
+                            ? LineChart(
                                 LineChartData(
                                   gridData: const FlGridData(show: false),
                                   borderData: FlBorderData(show: false),
@@ -65,9 +92,12 @@ class CoinDetailScreen extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                              ),
+                              )
+                            : const Center(child: Text('No chart data', style: TextStyle(color: Colors.white70))),
                       ),
                       const SizedBox(height: 30),
+
+                      // Info Rows
                       _info('Market Cap', '\$${coin.marketCap.toStringAsFixed(0)}'),
                       _info('24h Volume', '\$${coin.totalVolume.toStringAsFixed(0)}'),
                       _info('Circulating Supply', coin.circulatingSupply.toStringAsFixed(0)),

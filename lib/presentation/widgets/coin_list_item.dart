@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../screens/coin_detail_screen.dart';
 import '../../data/models/coin.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 class CoinListItem extends StatelessWidget {
   final Coin coin;
@@ -24,7 +25,21 @@ class CoinListItem extends StatelessWidget {
       ),
       leading: CircleAvatar(
         radius: 22,
-        backgroundImage: NetworkImage(coin.image),
+        backgroundColor: Colors.grey[800],
+        child: ClipOval(
+          child: CachedNetworkImage(
+            imageUrl: coin.image,
+            width: 44,
+            height: 44,
+            fit: BoxFit.cover,
+            placeholder: (context, url) => const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            errorWidget: (context, url, error) => const Icon(Icons.currency_bitcoin, color: Colors.white70),
+          ),
+        ),
       ),
       title: Text(coin.name, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text(coin.symbol.toUpperCase()),

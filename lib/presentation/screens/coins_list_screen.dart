@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../data/models/coin.dart';
 import '../../data/repositories/coin_repository.dart';
@@ -20,19 +21,20 @@ class CoinsListScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // ---------- Header ----------
+            // Header
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  const Icon(Icons.account_balance_wallet,
-                      size: 40, color: Colors.cyanAccent),
+                  const Icon(Icons.account_balance_wallet, size: 40, color: Colors.cyanAccent),
                   const SizedBox(width: 10),
-                  Text('Krypton',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall!
-                          .copyWith(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+                  Text(
+                    'Krypton',
+                    style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.cyanAccent,
+                        ),
+                  ),
                   const Spacer(),
                   IconButton(icon: const Icon(Icons.search), onPressed: () => _showSearch(context)),
                   IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () {}),
@@ -40,7 +42,7 @@ class CoinsListScreen extends StatelessWidget {
               ),
             ),
 
-            // ---------- Total Assets ----------
+            // Total Assets
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -51,10 +53,9 @@ class CoinsListScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const Text('\$23,000',
-                style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold)),
+            const Text('\$23,000', style: TextStyle(fontSize: 42, fontWeight: FontWeight.bold)),
 
-            // ---------- Action Buttons ----------
+            // Action Buttons
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -67,10 +68,10 @@ class CoinsListScreen extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            // ---------- Tabs ----------
+            // Tabs
             const _TabBarRow(),
 
-            // ---------- Coins List ----------
+            // Coins List
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () => repo.fetchCoins(forceRefresh: true),
@@ -88,7 +89,7 @@ class CoinsListScreen extends StatelessWidget {
     if (repo.isLoading && repo.coins.isEmpty) return _shimmerList();
 
     if (repo.coins.isEmpty) {
-      return const Center(child: Text('No coins found'));
+      return const Center(child: Text('No coins found', style: TextStyle(color: Colors.white70)));
     }
 
     return ValueListenableBuilder(
@@ -162,7 +163,7 @@ class CoinsListScreen extends StatelessWidget {
   }
 }
 
-// ---------- Tab Bar ----------
+// Tab Bar
 class _TabBarRow extends StatelessWidget {
   const _TabBarRow();
 
@@ -191,10 +192,13 @@ class _TabBarRow extends StatelessWidget {
       padding: const EdgeInsets.only(right: 30),
       child: Column(
         children: [
-          Text(text,
-              style: TextStyle(
-                  color: active ? Colors.cyanAccent : Colors.grey,
-                  fontWeight: active ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            text,
+            style: TextStyle(
+              color: active ? Colors.cyanAccent : Colors.grey,
+              fontWeight: active ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
           if (active) Container(height: 3, width: 30, color: Colors.cyanAccent),
         ],
       ),
@@ -202,7 +206,7 @@ class _TabBarRow extends StatelessWidget {
   }
 }
 
-// ---------- Bottom Nav ----------
+// Bottom Nav
 Widget _bottomNav() {
   return BottomNavigationBar(
     backgroundColor: const Color(0xFF0D0D1C),
@@ -217,7 +221,7 @@ Widget _bottomNav() {
   );
 }
 
-// ---------- Search Delegate ----------
+// Search Delegate
 class _CoinSearchDelegate extends SearchDelegate<Coin?> {
   @override
   List<Widget> buildActions(BuildContext context) => [
@@ -239,9 +243,7 @@ class _CoinSearchDelegate extends SearchDelegate<Coin?> {
   Widget _buildList(BuildContext context) {
     final repo = Provider.of<CoinRepository>(context, listen: false);
     final results = repo.coins
-        .where((c) =>
-            c.name.toLowerCase().contains(query.toLowerCase()) ||
-            c.symbol.toLowerCase().contains(query.toLowerCase()))
+        .where((c) => c.name.toLowerCase().contains(query.toLowerCase()) || c.symbol.toLowerCase().contains(query.toLowerCase()))
         .toList();
 
     return ListView.builder(
