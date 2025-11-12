@@ -23,20 +23,25 @@ class CoinsListScreen extends StatefulWidget {
 
 class _CoinsListScreenState extends State<CoinsListScreen> {
   int _selectedIndex = 0;
-  bool _showBalance = true;
+  final ValueNotifier<bool> _showBalance = ValueNotifier(true);
 
-  // Initialize pages in initState (only once)
   late final List<Widget> _pages;
 
   @override
   void initState() {
     super.initState();
     _pages = [
-      const _WalletPage(), // We'll rebuild this with Provider inside
+      _WalletPage(showBalance: _showBalance),
       const ExploreScreen(),
       const SwapScreen(),
       const SettingsScreen(),
     ];
+  }
+
+  @override
+  void dispose() {
+    _showBalance.dispose();
+    super.dispose();
   }
 
   @override
@@ -64,9 +69,11 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
   }
 }
 
-// Separate Wallet Page with Provider access
+// Wallet Page with ValueNotifier
 class _WalletPage extends StatelessWidget {
-  const _WalletPage();
+  final ValueNotifier<bool> showBalance;
+
+  const _WalletPage({required this.showBalance});
 
   @override
   Widget build(BuildContext context) {
@@ -107,8 +114,9 @@ class _WalletPage extends StatelessWidget {
             ),
 
             // Total Assets + Eye Toggle
-            Consumer<_CoinsListScreenState>(
-              builder: (context, state, _) {
+            ValueListenableBuilder<bool>(
+              valueListenable: showBalance,
+              builder: (context, visible, _) {
                 return Column(
                   children: [
                     Padding(
@@ -118,14 +126,14 @@ class _WalletPage extends StatelessWidget {
                         children: [
                           const Text('Total Assets', style: TextStyle(color: Colors.white70)),
                           IconButton(
-                            icon: Icon(state._showBalance ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => state.setState(() => state._showBalance = !state._showBalance),
+                            icon: Icon(visible ? Icons.visibility : Icons.visibility_off),
+                            onPressed: () => showBalance.value = !visible,
                           ),
                         ],
                       ),
                     ),
                     Text(
-                      state._showBalance ? '\$23,000' : '••••••',
+                      visible ? '\$23,000' : '••••••',
                       style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -133,7 +141,6 @@ class _WalletPage extends StatelessWidget {
               },
             ),
 
-            // Action Buttons
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -146,10 +153,8 @@ class _WalletPage extends StatelessWidget {
             ),
             const SizedBox(height: 30),
 
-            // Tabs
             const _TabBarRow(),
 
-            // Coins List
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () => repo.fetchCoins(forceRefresh: true),
