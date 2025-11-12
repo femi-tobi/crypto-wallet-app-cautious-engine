@@ -14,19 +14,19 @@ class CoinRepository with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  late final CacheOptions _baseCacheOptions;
+
   CoinRepository() {
     final cacheDir = Directory.systemTemp.createTempSync('coingecko_cache');
     final cacheStore = HiveCacheStore(cacheDir.path);
 
-    _dio.interceptors.add(
-      DioCacheInterceptor(
-        options: CacheOptions(
-          store: cacheStore,
-          policy: CachePolicy.refresh,
-          maxStale: const Duration(days: 1),
-        ),
-      ),
+    _baseCacheOptions = CacheOptions(
+      store: cacheStore,
+      policy: CachePolicy.refresh,
+      maxStale: const Duration(days: 1),
     );
+
+    _dio.interceptors.add(DioCacheInterceptor(options: _baseCacheOptions));
   }
 
   List<Coin> get coins => _coins;
@@ -39,15 +39,9 @@ class CoinRepository with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Extract store from existing interceptor
-      final interceptor = _dio.interceptors.firstWhere((i) => i is DioCacheInterceptor) as DioCacheInterceptor;
-      final store = interceptor.options.store;
-
-      final cacheOptions = CacheOptions(
-        store: store,
-        policy: forceRefresh ? CachePolicy.forceRefresh : CachePolicy.refresh,
-        maxStale: const Duration(days: 1),
-      );
+      final requestOptions = _baseCacheOptions.copyWith(
+        policy: forceRefresh ? CachePolicy.noCache : CachePolicy.refresh, // FIXED
+      ).toOptions();
 
       final response = await _dio.get(
         '/coins/markets',
@@ -58,7 +52,7 @@ class CoinRepository with ChangeNotifier {
           'page': 1,
           'sparkline': false,
         },
-        options: cacheOptions.toOptions(),
+        options: requestOptions,
       );
 
       final List data = response.data as List;
@@ -86,7 +80,7 @@ class CoinRepository with ChangeNotifier {
           .asMap()
           .entries
           .map((e) => FlSpot(e.key.toDouble(), (e.value[1] as num).toDouble()))
-          .toList(); // FIXED: Added .toList() and closed all brackets
+          .toList();
     } catch (_) {
       return [];
     }
