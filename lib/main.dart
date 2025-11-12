@@ -1,17 +1,22 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'presentation/screens/coins_list_screen.dart';
 import 'data/repositories/coin_repository.dart';
-import 'core/theme/app_theme.dart'; // ADD THIS
+import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 1. Init Hive
   await Hive.initFlutter();
-  await Hive.openBox('favorites');
-  await Hive.openBox('settings'); // For settings persistence
-  await Hive.openBox('dio_cache');
+
+  // 2. Open boxes safely (no adapters!)
+  await _openBoxSafely('favorites');
+  await _openBoxSafely('settings');
+  await _openBoxSafely('dio_cache');
 
   runApp(
     MultiProvider(
@@ -22,6 +27,17 @@ void main() async {
       child: const MyApp(),
     ),
   );
+}
+
+// Safe open: deletes corrupted box and reopens
+Future<void> _openBoxSafely(String name) async {
+  try {
+    await Hive.openBox(name);
+  } catch (e) {
+    print('Corrupted box $name, deleting...');
+    await Hive.deleteBoxFromDisk(name);
+    await Hive.openBox(name);
+  }
 }
 
 class MyApp extends StatelessWidget {

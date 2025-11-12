@@ -1,93 +1,103 @@
+// lib/data/repositories/coin_repository.dart
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_cache_interceptor_hive_store/dio_cache_interceptor_hive_store.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/material.dart';
 
 import '../models/coin.dart';
 
-class CoinRepository with ChangeNotifier {
-  final Dio _dio = Dio(BaseOptions(baseUrl: 'https://api.coingecko.com/api/v3'));
-
+class CoinRepository extends ChangeNotifier {
   List<Coin> _coins = [];
   bool _isLoading = false;
-  String? _error;
-
-  late final CacheOptions _baseCacheOptions;
-
-  CoinRepository() {
-    _initCache();
-  }
-
-  Future<void> _initCache() async {
-    // Let Hive auto-pick storage
-    // Web: IndexedDB
-    // Mobile: App documents
-    final cacheStore = HiveCacheStore(null);
-
-    _baseCacheOptions = CacheOptions(
-      store: cacheStore,
-      policy: CachePolicy.refresh,
-      maxStale: const Duration(days: 1),
-    );
-
-    _dio.interceptors.add(DioCacheInterceptor(options: _baseCacheOptions));
-  }
+  final Dio _dio = Dio();
+  late final CacheOptions _baseOptions;
+  late final HiveCacheStore _cacheStore;
 
   List<Coin> get coins => _coins;
   bool get isLoading => _isLoading;
-  String? get error => _error;
+
+  CoinRepository() {
+    _setupCache();
+    _startAutoRefresh();
+    fetchCoins(forceRefresh: true);
+  }
+
+  void _setupCache() {
+    final cacheDir = Hive.box('dio_cache').path ?? '';
+    _cacheStore = HiveCacheStore(cacheDir);
+
+    _baseOptions = CacheOptions(
+      store: _cacheStore,
+      policy: CachePolicy.request,
+      maxStale: const Duration(days: 7),
+      // priority: CachePriority.normal, // Default, removed
+    );
+
+    _dio.interceptors.add(DioCacheInterceptor(options: _baseOptions));
+  }
+
+  void _startAutoRefresh() {
+    Timer.periodic(const Duration(seconds: 60), (_) {
+      fetchCoins(forceRefresh: false);
+    });
+  }
 
   Future<void> fetchCoins({bool forceRefresh = false}) async {
+    if (_isLoading) return;
     _isLoading = true;
-    _error = null;
     notifyListeners();
 
     try {
-      final requestOptions = _baseCacheOptions.copyWith(
-        policy: forceRefresh ? CachePolicy.noCache : CachePolicy.refresh,
-      ).toOptions();
+      final policy = forceRefresh ? CachePolicy.noCache : CachePolicy.request;
+      final options = _baseOptions.copyWith(policy: policy).toOptions();
 
       final response = await _dio.get(
-        '/coins/markets',
+        'https://api.coingecko.com/api/v3/coins/markets',
         queryParameters: {
           'vs_currency': 'usd',
           'order': 'market_cap_desc',
           'per_page': 100,
           'page': 1,
-          'sparkline': false,
+          'sparkline': true,
         },
-        options: requestOptions,
+        options: options,
       );
 
-      final List data = response.data as List;
-      _coins = data.map((e) => Coin.fromJson(e)).toList();
-    } on DioException catch (e) {
-      _error = e.response?.statusCode == 429
-          ? 'Rate limited. Try again later.'
-          : e.message ?? 'Network error';
+      final List data = response.data;
+      _coins = data.map((json) => Coin.fromJson(json)).toList();
     } catch (e) {
-      _error = e.toString();
+      debugPrint('Network error: $e');
+      await _loadFromCache();
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<List<FlSpot>> getPriceHistory(String coinId) async {
+  Future<void> _loadFromCache() async {
     try {
-      final resp = await _dio.get(
-        '/coins/$coinId/market_chart',
-        queryParameters: {'vs_currency': 'usd', 'days': '7'},
-      );
-      final List prices = resp.data['prices'] as List;
-      return prices
-          .asMap()
-          .entries
-          .map((e) => FlSpot(e.key.toDouble(), (e.value[1] as num).toDouble()))
-          .toList();
-    } catch (_) {
-      return [];
+      final key = _dio.getUri(Uri(
+        scheme: 'https',
+        host: 'api.coingecko.com',
+        path: '/api/v3/coins/markets',
+        queryParameters: {
+          'vs_currency': 'usd',
+          'order': 'market_cap_desc',
+          'per_page': '100',
+          'page': '1',
+          'sparkline': 'true',
+        },
+      )).toString();
+
+      final cached = await _cacheStore.get(key);
+      if (cached?.content != null) {
+        final List data = cached!.content!;
+        _coins = data.map((json) => Coin.fromJson(json)).toList();
+      }
+    } catch (e) {
+      debugPrint('Cache load error: $e');
     }
   }
 }

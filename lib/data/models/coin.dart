@@ -1,39 +1,34 @@
 class Coin {
   final String id;
-  final String name;
   final String symbol;
+  final String name;
   final String image;
   final double currentPrice;
+  final double priceChange24h;
   final double priceChangePercentage24h;
-  final double marketCap;
-  final double totalVolume;
-  final double circulatingSupply;
+  final List<double> sparkline;
 
   Coin({
     required this.id,
-    required this.name,
     required this.symbol,
+    required this.name,
     required this.image,
     required this.currentPrice,
+    required this.priceChange24h,
     required this.priceChangePercentage24h,
-    required this.marketCap,
-    required this.totalVolume,
-    required this.circulatingSupply,
+    required this.sparkline,
   });
 
   factory Coin.fromJson(Map<String, dynamic> json) {
     return Coin(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      symbol: json['symbol'] as String,
-      image: json['image'] as String,
-      currentPrice: (json['current_price'] as num).toDouble(),
-      priceChangePercentage24h:
-          (json['price_change_percentage_24h'] as num?)?.toDouble() ?? 0.0,
-      marketCap: (json['market_cap'] as num?)?.toDouble() ?? 0.0,
-      totalVolume: (json['total_volume'] as num?)?.toDouble() ?? 0.0,
-      circulatingSupply:
-          (json['circulating_supply'] as num?)?.toDouble() ?? 0.0,
+      id: json['id'],
+      symbol: json['symbol'].toUpperCase(),
+      name: json['name'],
+      image: json['image'],
+      currentPrice: (json['current_price'] ?? 0).toDouble(),
+      priceChange24h: (json['price_change_24h'] ?? 0).toDouble(),
+      priceChangePercentage24h: (json['price_change_percentage_24h'] ?? 0).toDouble(),
+      sparkline: List<double>.from(json['sparkline_in_7d']['price'] ?? []),
     );
   }
 }
