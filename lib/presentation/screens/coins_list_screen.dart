@@ -1,3 +1,4 @@
+// lib/presentation/screens/coins_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -8,6 +9,8 @@ import '../../data/models/coin.dart';
 import '../../data/repositories/coin_repository.dart';
 import '../widgets/coin_list_item.dart';
 import 'coin_detail_screen.dart';
+import 'explore_screen.dart';
+import 'swap_screen.dart';
 import 'settings_screen.dart';
 import 'notifications_screen.dart';
 
@@ -27,10 +30,19 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
   @override
   void initState() {
     super.initState();
+
+    // FIX: Fetch coins after first frame
+    Future.microtask(() {
+      final repo = Provider.of<CoinRepository>(context, listen: false);
+      repo.fetchCoins(forceRefresh: true).catchError((e) {
+        debugPrint('Initial fetch failed: $e');
+      });
+    });
+
     _pages = [
       _WalletPage(showBalance: _showBalance),
-      const Center(child: Text('Explore', style: TextStyle(fontSize: 24))),
-      const Center(child: Text('Swap', style: TextStyle(fontSize: 24))),
+      const ExploreScreen(),
+      const SwapScreen(),
       const SettingsScreen(),
     ];
   }
@@ -44,7 +56,10 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _selectedIndex, children: _pages),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (i) => setState(() => _selectedIndex = i),
@@ -54,7 +69,7 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.wallet), label: 'Wallet'),
-          BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'Explore'),
+          BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
           BottomNavigationBarItem(icon: Icon(Icons.swap_horiz), label: 'Swap'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
@@ -75,7 +90,6 @@ class _WalletPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -85,15 +99,11 @@ class _WalletPage extends StatelessWidget {
                   Text('Krypton', style: Theme.of(context).textTheme.headlineSmall!.copyWith(fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
                   const Spacer(),
                   IconButton(icon: const Icon(Icons.search), onPressed: () => _showSearch(context)),
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-                  ),
+                  IconButton(icon: const Icon(Icons.notifications_outlined), onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen()))),
                 ],
               ),
             ),
 
-            // Balance + Eye
             ValueListenableBuilder<bool>(
               valueListenable: showBalance,
               builder: (context, visible, _) {
@@ -105,10 +115,7 @@ class _WalletPage extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('Total Assets', style: TextStyle(color: Colors.white70)),
-                          IconButton(
-                            icon: Icon(visible ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => showBalance.value = !visible,
-                          ),
+                          IconButton(icon: Icon(visible ? Icons.visibility : Icons.visibility_off), onPressed: () => showBalance.value = !visible),
                         ],
                       ),
                     ),
@@ -126,9 +133,7 @@ class _WalletPage extends StatelessWidget {
               _actionBtn(Icons.swap_horiz, 'Swap', Colors.teal),
             ]),
             const SizedBox(height: 30),
-
             const _TabBarRow(),
-
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () => repo.fetchCoins(forceRefresh: true),
@@ -143,7 +148,6 @@ class _WalletPage extends StatelessWidget {
 
   Widget _buildBody(CoinRepository repo) {
     if (repo.isLoading && repo.coins.isEmpty) return _shimmerList();
-
     if (repo.coins.isEmpty) {
       return Center(
         child: Column(

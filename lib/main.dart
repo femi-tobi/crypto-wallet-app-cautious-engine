@@ -10,10 +10,8 @@ import 'core/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Init Hive
   await Hive.initFlutter();
 
-  // 2. Open boxes safely (no adapters!)
   await _openBoxSafely('favorites');
   await _openBoxSafely('settings');
   await _openBoxSafely('dio_cache');
@@ -29,7 +27,6 @@ void main() async {
   );
 }
 
-// Safe open: deletes corrupted box and reopens
 Future<void> _openBoxSafely(String name) async {
   try {
     await Hive.openBox(name);

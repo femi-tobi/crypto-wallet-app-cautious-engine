@@ -1,4 +1,3 @@
-// lib/data/repositories/coin_repository.dart
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
@@ -21,7 +20,7 @@ class CoinRepository extends ChangeNotifier {
   CoinRepository() {
     _setupCache();
     _startAutoRefresh();
-    fetchCoins(forceRefresh: true);
+    // fetchCoins() is now called from initState in CoinsListScreen
   }
 
   void _setupCache() {
@@ -32,7 +31,6 @@ class CoinRepository extends ChangeNotifier {
       store: _cacheStore,
       policy: CachePolicy.request,
       maxStale: const Duration(days: 7),
-      // priority: CachePriority.normal, // Default, removed
     );
 
     _dio.interceptors.add(DioCacheInterceptor(options: _baseOptions));
