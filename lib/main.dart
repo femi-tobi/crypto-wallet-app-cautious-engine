@@ -1,4 +1,3 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -12,7 +11,6 @@ void main() async {
 
   await Hive.initFlutter();
 
-  // SAFE OPEN + FORCE DELETE CORRUPTED BOXES
   await _safeOpenBox('favorites');
   await _safeOpenBox('settings');
   await _safeOpenBox('dio_cache');

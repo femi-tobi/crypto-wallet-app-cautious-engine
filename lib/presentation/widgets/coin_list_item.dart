@@ -1,8 +1,7 @@
-// lib/presentation/widgets/coin_list_item.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../data/models/coin.dart';
-import '../screens/coin_detail_screen.dart'; // ADD THIS LINE
+import '../screens/coin_detail_screen.dart'; 
 
 class CoinListItem extends StatelessWidget {
   final Coin coin;

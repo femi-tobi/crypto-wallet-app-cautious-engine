@@ -1,4 +1,3 @@
-// lib/data/repositories/coin_repository.dart
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
@@ -20,7 +19,7 @@ class CoinRepository extends ChangeNotifier {
 
   CoinRepository() {
     _setupCache();
-    _clearOldCache(); // Prevents typeId: 125
+    _clearOldCache(); 
     _startAutoRefresh();
   }
 

@@ -15,7 +15,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  PackageInfo? _packageInfo; // ← Now nullable
+  PackageInfo? _packageInfo;
   bool _biometricEnabled = false;
   bool _pushNotifications = true;
   String _currency = 'USD';
@@ -24,7 +24,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadPrefs();
-    _loadPackageInfo(); // ← Async, no problem
+    _loadPackageInfo(); 
   }
 
   Future<void> _loadPackageInfo() async {

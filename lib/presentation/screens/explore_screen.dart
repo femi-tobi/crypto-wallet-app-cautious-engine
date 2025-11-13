@@ -1,4 +1,3 @@
-// lib/presentation/screens/explore_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -58,7 +57,6 @@ class _ExploreScreenState extends State<ExploreScreen> with SingleTickerProvider
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: const EdgeInsets.all(16),
             child: TextField(

@@ -32,7 +32,7 @@ class CoinDetailScreen extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              // Header
+
               Row(
                 children: [
                   CachedNetworkImage(
@@ -62,7 +62,6 @@ class CoinDetailScreen extends StatelessWidget {
 
               const SizedBox(height: 30),
 
-              // Price
               Text(
                 '\$${coin.currentPrice.toStringAsFixed(2)}',
                 style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
@@ -77,7 +76,7 @@ class CoinDetailScreen extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // Chart
+            
               const Text('7-Day Price Trend', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
               const SizedBox(height: 16),
               Container(

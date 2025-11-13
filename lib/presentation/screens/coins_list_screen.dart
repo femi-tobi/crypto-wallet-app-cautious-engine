@@ -1,4 +1,3 @@
-// lib/presentation/screens/coins_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -30,7 +29,6 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
   void initState() {
     super.initState();
 
-    // FETCH COINS AFTER FIRST FRAME
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final repo = Provider.of<CoinRepository>(context, listen: false);
       if (repo.coins.isEmpty && !repo.isLoading) {
@@ -77,7 +75,6 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
   }
 }
 
-// === WALLET PAGE ===
 class _WalletPage extends StatelessWidget {
   final ValueNotifier<bool> showBalance;
   const _WalletPage({required this.showBalance});
@@ -90,7 +87,6 @@ class _WalletPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -114,7 +110,6 @@ class _WalletPage extends StatelessWidget {
               ),
             ),
 
-            // BALANCE
             ValueListenableBuilder<bool>(
               valueListenable: showBalance,
               builder: (context, visible, _) {
@@ -144,7 +139,6 @@ class _WalletPage extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // ACTION BUTTONS
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
@@ -157,10 +151,8 @@ class _WalletPage extends StatelessWidget {
 
             const SizedBox(height: 30),
 
-            // TABS
             const _TabBarRow(),
 
-            // COIN LIST
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () => repo.fetchCoins(forceRefresh: true),
@@ -261,7 +253,6 @@ class _WalletPage extends StatelessWidget {
   }
 }
 
-// TABS
 class _TabBarRow extends StatelessWidget {
   const _TabBarRow();
   @override
@@ -291,7 +282,6 @@ class _Tab extends StatelessWidget {
       );
 }
 
-// SEARCH
 class _CoinSearchDelegate extends SearchDelegate<Coin?> {
   @override
   List<Widget> buildActions(BuildContext context) => [IconButton(icon: const Icon(Icons.clear), onPressed: () => query = '')];

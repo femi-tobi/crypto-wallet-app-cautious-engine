@@ -1,7 +1,6 @@
-// lib/presentation/screens/swap_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // ADD THIS LINE
+import 'package:cached_network_image/cached_network_image.dart'; 
 import '../../data/repositories/coin_repository.dart';
 import '../../data/models/coin.dart';
 
@@ -31,7 +30,6 @@ class _SwapScreenState extends State<SwapScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // From
             _coinSelector(
               label: 'From',
               coin: _fromCoin,
@@ -54,7 +52,7 @@ class _SwapScreenState extends State<SwapScreen> {
             Icon(Icons.swap_vert, size: 32, color: Colors.cyanAccent),
             const SizedBox(height: 16),
 
-            // To
+          
             _coinSelector(
               label: 'To',
               coin: _toCoin,
@@ -78,7 +76,6 @@ class _SwapScreenState extends State<SwapScreen> {
 
             const SizedBox(height: 20),
 
-            // Advanced Settings
             ExpansionTile(
               title: const Text('Advanced Settings'),
               children: [
@@ -184,7 +181,7 @@ class _SwapScreenState extends State<SwapScreen> {
       return;
     }
     final amount = double.tryParse(_amountController.text) ?? 0;
-    setState(() => _estimated = amount * 0.98); // Mock 2% fee
+    setState(() => _estimated = amount * 0.98); 
   }
 
   Widget _slider(String label, double value, double min, double max, Function(double) onChanged) {
