@@ -1,6 +1,5 @@
 // lib/data/repositories/coin_repository.dart
 import 'dart:async';
-import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_cache_interceptor_hive_store/dio_cache_interceptor_hive_store.dart';
@@ -45,8 +44,17 @@ class CoinRepository extends ChangeNotifier {
       _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
         _updateOnlineStatus(results);
       });
+
+      // FORCE ONLINE IF MOBILE/WIFI
+      if (connectivityResult.contains(ConnectivityResult.mobile) ||
+          connectivityResult.contains(ConnectivityResult.wifi)) {
+        _isOnline = true;
+        notifyListeners();
+        fetchCoins(forceRefresh: true);
+      }
     } catch (e) {
       _isOnline = true;
+      notifyListeners();
     }
   }
 
