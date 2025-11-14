@@ -1,3 +1,4 @@
+// lib/presentation/screens/coins_list_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -31,9 +32,7 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final repo = Provider.of<CoinRepository>(context, listen: false);
-      if (repo.coins.isEmpty && !repo.isLoading) {
-        repo.fetchCoins(forceRefresh: true);
-      }
+      repo.fetchCoins(forceRefresh: true);
     });
 
     _pages = [
@@ -177,13 +176,13 @@ class _WalletPage extends StatelessWidget {
           children: [
             const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text('Offline Mode', style: TextStyle(color: Colors.grey, fontSize: 18)),
-            const Text('Showing cached data', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const Text('No Data', style: TextStyle(color: Colors.grey, fontSize: 18)),
+            const Text('Check internet and pull to refresh', style: TextStyle(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => repo.fetchCoins(forceRefresh: true),
               icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
+              label: const Text('Retry'),
               style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
             ),
           ],
@@ -224,11 +223,11 @@ class _WalletPage extends StatelessWidget {
       highlightColor: Colors.grey[700]!,
       child: ListView.builder(
         itemCount: 10,
-        itemBuilder: (_, __) => const ListTile(
-          leading: CircleAvatar(backgroundColor: Colors.white),
-          title: SizedBox(height: 16),
-          subtitle: SizedBox(height: 12),
-          trailing: SizedBox(width: 80),
+        itemBuilder: (_, __) => ListTile(
+          leading: const CircleAvatar(backgroundColor: Colors.white),
+          title: Container(height: 16, color: Colors.white),
+          subtitle: Container(height: 12, color: Colors.white),
+          trailing: Container(width: 80, color: Colors.white),
         ),
       ),
     );

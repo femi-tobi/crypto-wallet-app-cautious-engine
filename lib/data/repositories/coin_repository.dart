@@ -1,9 +1,13 @@
+// lib/data/repositories/coin_repository.dart
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_cache_interceptor_hive_store/dio_cache_interceptor_hive_store.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../models/coin.dart';
 
@@ -13,14 +17,52 @@ class CoinRepository extends ChangeNotifier {
   final Dio _dio = Dio();
   late final CacheOptions _baseOptions;
   late final HiveCacheStore _cacheStore;
+  bool _isOnline = true;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   List<Coin> get coins => _coins;
   bool get isLoading => _isLoading;
+  bool get isOnline => _isOnline;
 
   CoinRepository() {
     _setupCache();
-    _clearOldCache(); 
+    _clearOldCache();
     _startAutoRefresh();
+    _checkConnectivity();
+  }
+
+  Future<void> _checkConnectivity() async {
+    if (kIsWeb) {
+      _isOnline = true;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      _updateOnlineStatus(connectivityResult);
+
+      _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
+        _updateOnlineStatus(results);
+      });
+    } catch (e) {
+      _isOnline = true;
+    }
+  }
+
+  void _updateOnlineStatus(List<ConnectivityResult> results) {
+    final hasConnection = results.any((r) => r != ConnectivityResult.none);
+    if (_isOnline != hasConnection) {
+      _isOnline = hasConnection;
+      notifyListeners();
+      if (_isOnline) fetchCoins(forceRefresh: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
   }
 
   void _setupCache() {
@@ -39,15 +81,12 @@ class CoinRepository extends ChangeNotifier {
   Future<void> _clearOldCache() async {
     try {
       await _cacheStore.clean();
-      debugPrint('Old cache cleared');
-    } catch (e) {
-      debugPrint('Failed to clear cache: $e');
-    }
+    } catch (e) {}
   }
 
   void _startAutoRefresh() {
     Timer.periodic(const Duration(seconds: 60), (_) {
-      fetchCoins(forceRefresh: false);
+      if (_isOnline) fetchCoins(forceRefresh: false);
     });
   }
 
@@ -106,8 +145,6 @@ class CoinRepository extends ChangeNotifier {
         final List data = cached!.content!;
         _coins = data.map((json) => Coin.fromJson(json)).toList();
       }
-    } catch (e) {
-      debugPrint('Cache load error: $e');
-    }
+    } catch (e) {}
   }
 }
