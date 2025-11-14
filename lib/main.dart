@@ -16,13 +16,31 @@ void main() async {
 
   final docsDir = await getApplicationDocumentsDirectory();
   final oldDir = Directory('${docsDir.path}/../app_flutter');
+  
+  // Selectively delete old files, but preserve coins cache
   if (await oldDir.exists()) {
-    await oldDir.delete(recursive: true);
+    try {
+      final entries = oldDir.listSync();
+      for (var entry in entries) {
+        // Don't delete coins.hive or coins.hive.lock
+        if (entry is File) {
+          final filename = entry.path.split('/').last;
+          if (!filename.startsWith('coins')) {
+            await entry.delete();
+          }
+        } else if (entry is Directory) {
+          await entry.delete(recursive: true);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error cleaning old directory: $e');
+    }
   }
 
   await Hive.initFlutter(docsDir.path);
   await Hive.openBox('favorites');
   await Hive.openBox('settings');
+  await Hive.openBox('coins'); // Open coins box here so it persists
 
   runApp(const MyAppWrapper());
 }
