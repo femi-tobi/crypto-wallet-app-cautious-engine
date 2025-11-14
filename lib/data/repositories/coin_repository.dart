@@ -1,111 +1,134 @@
 // lib/data/repositories/coin_repository.dart
 import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_cache_interceptor_hive_store/dio_cache_interceptor_hive_store.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../models/coin.dart';
 
+enum DataState { loading, loaded }
+
 class CoinRepository extends ChangeNotifier {
   List<Coin> _coins = [];
-  bool _isLoading = false;
-  final Dio _dio = Dio();
-  late final CacheOptions _baseOptions;
-  late final HiveCacheStore _cacheStore;
+  DataState _dataState = DataState.loading;
   bool _isOnline = true;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  final Dio _dio = Dio(); // FIXED: Dio21 → Dio
+  CacheOptions? _cacheOptions;
+  HiveCacheStore? _cacheStore;
 
   List<Coin> get coins => _coins;
-  bool get isLoading => _isLoading;
+  DataState get dataState => _dataState;
   bool get isOnline => _isOnline;
 
   CoinRepository() {
-    _setupCache();
-    _clearOldCache();
-    _startAutoRefresh();
-    _checkConnectivity();
+    _init();
+  }
+
+  Future<void> _init() async {
+    await _setupCache();
+    await _loadFromCache();
+    await _checkConnectivity();
+
+    if (_isOnline) {
+      await _fetchOnline();
+    } else {
+      _updateState(DataState.loaded);
+    }
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((results) {
+      final nowOnline = results.any((r) => r != ConnectivityResult.none);
+      if (nowOnline && !_isOnline) {
+        _isOnline = true;
+        _fetchOnline();
+      } else if (!nowOnline && _isOnline) {
+        _isOnline = false;
+      }
+    });
+  }
+
+  Future<void> _setupCache() async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final path = '${dir.path}/dio_cache.hive';
+      _cacheStore = HiveCacheStore(path);
+
+      _cacheOptions = CacheOptions(
+        store: _cacheStore,
+        policy: CachePolicy.refreshForceCache, // ALWAYS HIT CACHE ON ERROR
+        maxStale: const Duration(days: 30),
+      );
+
+      (_dio.httpClientAdapter as IOHttpClientAdapter).onHttpClientCreate = (client) {
+        client.badCertificateCallback = (cert, host, port) => true;
+        return client;
+      };
+
+      _dio.interceptors.add(DioCacheInterceptor(options: _cacheOptions!));
+      debugPrint('Cache setup complete');
+    } catch (e) {
+      debugPrint('Cache setup failed: $e');
+    }
   }
 
   Future<void> _checkConnectivity() async {
     if (kIsWeb) {
       _isOnline = true;
-      notifyListeners();
       return;
     }
+    try {
+      final result = await Connectivity().checkConnectivity();
+      _isOnline = result.any((r) => r != ConnectivityResult.none);
+    } catch (e) {
+      _isOnline = false;
+    }
+  }
+
+  Future<void> _loadFromCache() async {
+    if (_cacheStore == null || _cacheOptions == null) return;
 
     try {
-      final connectivityResult = await Connectivity().checkConnectivity();
-      _updateOnlineStatus(connectivityResult);
-
-      _connectivitySubscription = Connectivity().onConnectivityChanged.listen((List<ConnectivityResult> results) {
-        _updateOnlineStatus(results);
-      });
-
-      // FORCE ONLINE IF MOBILE/WIFI
-      if (connectivityResult.contains(ConnectivityResult.mobile) ||
-          connectivityResult.contains(ConnectivityResult.wifi)) {
-        _isOnline = true;
-        notifyListeners();
-        fetchCoins(forceRefresh: true);
+      final key = _getCacheKey();
+      final cached = await _cacheStore!.get(key);
+      if (cached?.content != null) {
+        final List data = cached!.content!;
+        _coins = data.map((json) => Coin.fromJson(json)).toList();
+        debugPrint('Loaded ${_coins.length} coins from cache');
+      } else {
+        debugPrint('No cached data found');
       }
     } catch (e) {
-      _isOnline = true;
-      notifyListeners();
+      debugPrint('Cache load failed: $e');
     }
   }
 
-  void _updateOnlineStatus(List<ConnectivityResult> results) {
-    final hasConnection = results.any((r) => r != ConnectivityResult.none);
-    if (_isOnline != hasConnection) {
-      _isOnline = hasConnection;
-      notifyListeners();
-      if (_isOnline) fetchCoins(forceRefresh: true);
-    }
+  String _getCacheKey() {
+    return _dio.getUri(Uri(
+      scheme: 'https',
+      host: 'api.coingecko.com',
+      path: '/api/v3/coins/markets',
+      queryParameters: {
+        'vs_currency': 'usd',
+        'order': 'market_cap_desc',
+        'per_page': '100',
+        'page': '1',
+        'sparkline': 'true',
+      },
+    )).toString();
   }
 
-  @override
-  void dispose() {
-    _connectivitySubscription?.cancel();
-    super.dispose();
-  }
+  Future<void> _fetchOnline() async {
+    if (_cacheOptions == null) return;
 
-  void _setupCache() {
-    final cacheDir = Hive.box('dio_cache').path ?? '';
-    _cacheStore = HiveCacheStore(cacheDir);
-
-    _baseOptions = CacheOptions(
-      store: _cacheStore,
-      policy: CachePolicy.request,
-      maxStale: const Duration(days: 7),
-    );
-
-    _dio.interceptors.add(DioCacheInterceptor(options: _baseOptions));
-  }
-
-  Future<void> _clearOldCache() async {
-    try {
-      await _cacheStore.clean();
-    } catch (e) {}
-  }
-
-  void _startAutoRefresh() {
-    Timer.periodic(const Duration(seconds: 60), (_) {
-      if (_isOnline) fetchCoins(forceRefresh: false);
-    });
-  }
-
-  Future<void> fetchCoins({bool forceRefresh = false}) async {
-    if (_isLoading) return;
-    _isLoading = true;
-    notifyListeners();
+    _updateState(DataState.loading);
 
     try {
-      final policy = forceRefresh ? CachePolicy.noCache : CachePolicy.request;
-      final options = _baseOptions.copyWith(policy: policy).toOptions();
+      final options = _cacheOptions!.copyWith(policy: CachePolicy.refresh).toOptions();
 
       final response = await _dio.get(
         'https://api.coingecko.com/api/v3/coins/markets',
@@ -117,42 +140,39 @@ class CoinRepository extends ChangeNotifier {
           'sparkline': true,
         },
         options: options,
-      );
+      ).timeout(const Duration(seconds: 10));
 
       final List data = response.data;
       _coins = data.map((json) => Coin.fromJson(json)).toList();
-    } on DioException catch (e) {
-      debugPrint('Network error: $e');
-      await _loadFromCache();
+      debugPrint('Fetched ${_coins.length} coins online');
+      _updateState(DataState.loaded);
     } catch (e) {
-      debugPrint('Unexpected error: $e');
+      debugPrint('Network failed, using cache: $e');
       await _loadFromCache();
-    } finally {
-      _isLoading = false;
+      _updateState(DataState.loaded);
+    }
+  }
+
+  Future<void> refresh() async {
+    await _loadFromCache();
+    if (_isOnline) {
+      await _fetchOnline();
+    } else {
+      _updateState(DataState.loaded);
+    }
+  }
+
+  void _updateState(DataState state) {
+    if (_dataState != state) {
+      _dataState = state;
       notifyListeners();
     }
   }
 
-  Future<void> _loadFromCache() async {
-    try {
-      final key = _dio.getUri(Uri(
-        scheme: 'https',
-        host: 'api.coingecko.com',
-        path: '/api/v3/coins/markets',
-        queryParameters: {
-          'vs_currency': 'usd',
-          'order': 'market_cap_desc',
-          'per_page': '100',
-          'page': '1',
-          'sparkline': 'true',
-        },
-      )).toString();
-
-      final cached = await _cacheStore.get(key);
-      if (cached?.content != null) {
-        final List data = cached!.content!;
-        _coins = data.map((json) => Coin.fromJson(json)).toList();
-      }
-    } catch (e) {}
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    _cacheStore?.close();
+    super.dispose();
   }
 }

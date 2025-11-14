@@ -1,3 +1,4 @@
+// lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,7 +7,7 @@ class ThemeProvider extends ChangeNotifier {
 
   bool get isDark => _isDark;
 
-  ThemeData get theme => _isDark ? _darkTheme : _lightTheme;
+  ThemeData get theme => _isDark ? darkTheme : lightTheme; // Use public getters
 
   void toggleTheme() {
     _isDark = !_isDark;
@@ -14,7 +15,19 @@ class ThemeProvider extends ChangeNotifier {
   }
 }
 
-final _darkTheme = ThemeData(
+// PUBLIC THEMES — NO UNDERSCORE
+final ThemeData lightTheme = ThemeData(
+  brightness: Brightness.light,
+  primaryColor: Colors.white,
+  scaffoldBackgroundColor: Colors.white,
+  appBarTheme: const AppBarTheme(
+    backgroundColor: Colors.white,
+    foregroundColor: Colors.black,
+    elevation: 0,
+  ),
+);
+
+final ThemeData darkTheme = ThemeData(
   brightness: Brightness.dark,
   primaryColor: const Color(0xFF0D0D1C),
   scaffoldBackgroundColor: const Color(0xFF0D0D1C),
@@ -32,15 +45,4 @@ final _darkTheme = ThemeData(
     secondary: Colors.teal,
   ),
   iconTheme: const IconThemeData(color: Colors.white70),
-);
-
-final _lightTheme = ThemeData(
-  brightness: Brightness.light,
-  primaryColor: Colors.white,
-  scaffoldBackgroundColor: Colors.white,
-  appBarTheme: const AppBarTheme(
-    backgroundColor: Colors.white,
-    foregroundColor: Colors.black,
-    elevation: 0,
-  ),
 );

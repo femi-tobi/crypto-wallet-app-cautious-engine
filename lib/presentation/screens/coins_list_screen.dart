@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../data/models/coin.dart';
 import '../../data/repositories/coin_repository.dart';
@@ -32,7 +31,7 @@ class _CoinsListScreenState extends State<CoinsListScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final repo = Provider.of<CoinRepository>(context, listen: false);
-      repo.fetchCoins(forceRefresh: true);
+      repo.refresh();
     });
 
     _pages = [
@@ -80,140 +79,134 @@ class _WalletPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repo = Provider.of<CoinRepository>(context);
-
-    return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  const Icon(Icons.account_balance_wallet, size: 40, color: Colors.cyanAccent),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Krypton',
-                    style: Theme.of(context).textTheme.headlineSmall!.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.cyanAccent,
-                        ),
-                  ),
-                  const Spacer(),
-                  IconButton(icon: const Icon(Icons.search), onPressed: () => _showSearch(context)),
-                  IconButton(
-                    icon: const Icon(Icons.notifications_outlined),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-                  ),
-                ],
-              ),
-            ),
-
-            ValueListenableBuilder<bool>(
-              valueListenable: showBalance,
-              builder: (context, visible, _) {
-                return Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Total Assets', style: TextStyle(color: Colors.white70)),
-                          IconButton(
-                            icon: Icon(visible ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => showBalance.value = !visible,
-                          ),
-                        ],
-                      ),
-                    ),
-                    Text(
-                      visible ? '\$23,450.00' : '••••••',
-                      style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                );
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Consumer<CoinRepository>(
+      builder: (context, repo, child) {
+        return Scaffold(
+          body: SafeArea(
+            child: Column(
               children: [
-                _actionBtn(Icons.send, 'Send', Colors.teal),
-                _actionBtn(Icons.qr_code_scanner, 'Receive', Colors.teal),
-                _actionBtn(Icons.add_box, 'Buy', Colors.teal),
-                _actionBtn(Icons.swap_horiz, 'Swap', Colors.teal),
+                // HEADER
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.account_balance_wallet, size: 40, color: Colors.cyanAccent),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Krypton',
+                        style: Theme.of(context).textTheme.headlineSmall!.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.cyanAccent,
+                            ),
+                      ),
+                      const Spacer(),
+                      IconButton(icon: const Icon(Icons.search), onPressed: () => _showSearch(context)),
+                      IconButton(
+                        icon: const Icon(Icons.notifications_outlined),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // BALANCE
+                ValueListenableBuilder<bool>(
+                  valueListenable: showBalance,
+                  builder: (context, visible, _) {
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Total Assets', style: TextStyle(color: Colors.white70)),
+                              IconButton(
+                                icon: Icon(visible ? Icons.visibility : Icons.visibility_off),
+                                onPressed: () => showBalance.value = !visible,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          visible ? '\$23,450.00' : '••••••',
+                          style: const TextStyle(fontSize: 42, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                // ACTION BUTTONS
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _actionBtn(Icons.send, 'Send', Colors.teal),
+                    _actionBtn(Icons.qr_code_scanner, 'Receive', Colors.teal),
+                    _actionBtn(Icons.add_box, 'Buy', Colors.teal),
+                    _actionBtn(Icons.swap_horiz, 'Swap', Colors.teal),
+                  ],
+                ),
+
+                const SizedBox(height: 30),
+
+                const _TabBarRow(),
+
+                // LIST BODY
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: () => repo.refresh(),
+                    child: _buildBody(repo),
+                  ),
+                ),
               ],
             ),
-
-            const SizedBox(height: 30),
-
-            const _TabBarRow(),
-
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => repo.fetchCoins(forceRefresh: true),
-                child: _buildBody(repo),
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildBody(CoinRepository repo) {
-    if (repo.isLoading && repo.coins.isEmpty) {
+    if (repo.dataState == DataState.loading) {
       return _shimmerList();
     }
 
-    if (repo.coins.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.wifi_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text('No Data', style: TextStyle(color: Colors.grey, fontSize: 18)),
-            const Text('Check internet and pull to refresh', style: TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () => repo.fetchCoins(forceRefresh: true),
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.cyanAccent),
-            ),
-          ],
-        ),
+    if (repo.coins.isNotEmpty) {
+      return ValueListenableBuilder(
+        valueListenable: Hive.box('favorites').listenable(),
+        builder: (context, box, _) {
+          final favSet = box.values.toSet();
+          return ListView.builder(
+            itemCount: repo.coins.length,
+            itemBuilder: (context, i) {
+              final coin = repo.coins[i];
+              final isFav = favSet.contains(coin.id);
+              return CoinListItem(
+                coin: coin,
+                isFavorite: isFav,
+                onFavoriteToggle: () {
+                  final box = Hive.box('favorites');
+                  if (isFav) {
+                    box.delete(coin.id);
+                  } else {
+                    box.put(coin.id, coin.id);
+                  }
+                },
+              );
+            },
+          );
+        },
       );
     }
 
-    return ValueListenableBuilder(
-      valueListenable: Hive.box('favorites').listenable(),
-      builder: (context, box, _) {
-        final favSet = box.values.toSet();
-        return ListView.builder(
-          itemCount: repo.coins.length,
-          itemBuilder: (context, i) {
-            final coin = repo.coins[i];
-            final isFav = favSet.contains(coin.id);
-            return CoinListItem(
-              coin: coin,
-              isFavorite: isFav,
-              onFavoriteToggle: () {
-                final box = Hive.box('favorites');
-                if (isFav) {
-                  box.delete(coin.id);
-                } else {
-                  box.put(coin.id, coin.id);
-                }
-              },
-            );
-          },
-        );
-      },
+    return const Center(
+      child: Text(
+        'No data available',
+        style: TextStyle(fontSize: 16, color: Colors.grey),
+      ),
     );
   }
 
@@ -271,31 +264,56 @@ class _Tab extends StatelessWidget {
   final String text;
   final bool active;
   const _Tab(this.text, this.active);
+
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(right: 30),
-        child: Column(children: [
-          Text(text, style: TextStyle(color: active ? Colors.cyanAccent : Colors.grey, fontWeight: active ? FontWeight.bold : FontWeight.normal)),
-          if (active) Container(height: 3, width: 30, color: Colors.cyanAccent),
-        ]),
+        child: Column(
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                color: active ? Colors.cyanAccent : Colors.grey,
+                fontWeight: active ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (active)
+              Container(height: 3, width: 30, color: Colors.cyanAccent),
+          ],
+        ),
       );
 }
 
 class _CoinSearchDelegate extends SearchDelegate<Coin?> {
   @override
-  List<Widget> buildActions(BuildContext context) => [IconButton(icon: const Icon(Icons.clear), onPressed: () => query = '')];
+  List<Widget> buildActions(BuildContext context) => [
+        IconButton(icon: const Icon(Icons.clear), onPressed: () => query = '')
+      ];
+
   @override
-  Widget buildLeading(BuildContext context) => IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => close(context, null));
+  Widget buildLeading(BuildContext context) => IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () => close(context, null),
+      );
+
   @override
   Widget buildResults(BuildContext context) => _buildList(context);
+
   @override
   Widget buildSuggestions(BuildContext context) => _buildList(context);
 
   Widget _buildList(BuildContext context) {
     final repo = Provider.of<CoinRepository>(context, listen: false);
-    final results = repo.coins.where((c) => c.name.toLowerCase().contains(query.toLowerCase()) || c.symbol.toLowerCase().contains(query.toLowerCase())).toList();
+    final results = repo.coins
+        .where((c) =>
+            c.name.toLowerCase().contains(query.toLowerCase()) ||
+            c.symbol.toLowerCase().contains(query.toLowerCase()))
+        .toList();
 
-    if (results.isEmpty) return const Center(child: Text('No coins found', style: TextStyle(color: Colors.grey)));
+    if (results.isEmpty) {
+      return const Center(
+          child: Text('No coins found', style: TextStyle(color: Colors.grey)));
+    }
 
     return ListView.builder(
       itemCount: results.length,

@@ -1,42 +1,44 @@
+// lib/main.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'presentation/screens/coins_list_screen.dart';
 import 'data/repositories/coin_repository.dart';
 import 'core/theme/app_theme.dart';
 
+final GlobalKey<ScaffoldMessengerState> snackBarKey = GlobalKey<ScaffoldMessengerState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Hive.initFlutter();
+  final docsDir = await getApplicationDocumentsDirectory();
+  final oldDir = Directory('${docsDir.path}/../app_flutter');
+  if (await oldDir.exists()) {
+    await oldDir.delete(recursive: true);
+  }
 
-  await _safeOpenBox('favorites');
-  await _safeOpenBox('settings');
-  await _safeOpenBox('dio_cache');
+  await Hive.initFlutter(docsDir.path);
+  await Hive.openBox('favorites');
+  await Hive.openBox('settings');
 
-  runApp(
-    MultiProvider(
+  runApp(const MyAppWrapper());
+}
+
+class MyAppWrapper extends StatelessWidget {
+  const MyAppWrapper({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => CoinRepository()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
       child: const MyApp(),
-    ),
-  );
-}
-
-Future<void> _safeOpenBox(String name) async {
-  try {
-    await Hive.openBox(name);
-  } on HiveError catch (e) {
-    print('Corrupted $name: $e → Deleting...');
-    await Hive.deleteBoxFromDisk(name);
-    await Hive.openBox(name);
-  } catch (e) {
-    print('Failed to open $name: $e → Forcing delete...');
-    await Hive.deleteBoxFromDisk(name);
-    await Hive.openBox(name);
+    );
   }
 }
 
@@ -46,11 +48,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+
     return MaterialApp(
-      title: 'Krypton',
-      theme: themeProvider.theme,
+      title: 'Crypto Wallet',
+      theme: lightTheme,
+      darkTheme: darkTheme,
+      themeMode: themeProvider.isDark ? ThemeMode.dark : ThemeMode.light,
       home: const CoinsListScreen(),
       debugShowCheckedModeBanner: false,
+      scaffoldMessengerKey: snackBarKey,
     );
   }
 }
